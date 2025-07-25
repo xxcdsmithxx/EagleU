@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CIDR Subnetting Practice</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #1e1e2f;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    .question {
+      font-size: 24px;
+      margin: 20px 0;
+    }
+    input {
+      padding: 8px;
+      font-size: 16px;
+      margin: 5px;
+      width: 220px;
+    }
+    input.correct {
+      background-color: #4CAF50;
+      color: white;
+    }
+    input.incorrect {
+      background-color: #f44336;
+      color: white;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>CIDR Subnetting Practice</h1>
+  <div class="question" id="cidr-question"></div>
+
+  <div>
+    <input id="subnet-mask" placeholder="Subnet Mask">
+    <input id="host-count" placeholder="Number of Hosts">
+    <input id="network-address" placeholder="Network Address">
+    <input id="broadcast-address" placeholder="Broadcast Address">
+    <input id="first-host" placeholder="First Host">
+    <input id="last-host" placeholder="Last Host">
+  </div>
+
+  <button onclick="checkAnswers()">Check Answers</button>
+  <button onclick="generateQuestion()">New Question</button>
+
+  <audio id="victory-sound" src="https://www.soundjay.com/buttons/sounds/button-4.mp3"></audio>
+
+  <script>
+    let currentIP, currentCIDR, correctAnswers = {};
+
+    function randomIP() {
+      return [192, 168, Math.floor(Math.random() * 256), 0];
+    }
+
+    function cidrToMask(cidr) {
+      let mask = [];
+      for (let i = 0; i < 4; i++) {
+        if (cidr >= 8) {
+          mask.push(255);
+          cidr -= 8;
+        } else {
+          mask.push(256 - Math.pow(2, 8 - cidr));
+          cidr = 0;
+        }
+      }
+      return mask.join('.');
+    }
+
+    function ipToInt(ip) {
+      return ip.reduce((acc, octet) => (acc << 8) + octet, 0);
+    }
+
+    function intToIp(int) {
+      return [24, 16, 8, 0].map(shift => (int >> shift) & 255).join('.');
+    }
+
+    function generateQuestion() {
+      document.querySelectorAll('input').forEach(input => {
+        input.value = '';
+        input.classList.remove('correct', 'incorrect');
+        input.disabled = false;
+      });
+
+      const cidr = Math.floor(Math.random() * 7) + 24; // 24 to 30
+      const ip = randomIP();
+      const baseIp = ipToInt(ip);
+      const maskInt = ~((1 << (32 - cidr)) - 1) >>> 0;
+      const subnetMask = cidrToMask(cidr);
+      const network = baseIp & maskInt;
+      const broadcast = network | ~maskInt >>> 0;
+      const numHosts = cidr === 31 || cidr === 32 ? 0 : Math.pow(2, 32 - cidr) - 2;
+
+      correctAnswers = {
+        "subnet-mask": subnetMask,
+        "host-count": String(numHosts),
+        "network-address": intToIp(network),
+        "broadcast-address": intToIp(broadcast),
+        "first-host": cidr >= 31 ? "N/A" : intToIp(network + 1),
+        "last-host": cidr >= 31 ? "N/A" : intToIp(broadcast - 1)
+      };
+
+      currentIP = ip;
+      currentCIDR = cidr;
+      document.getElementById("cidr-question").innerText = `IP: ${ip.join('.')} /${cidr}`;
+    }
+
+    function checkAnswers() {
+      let allCorrect = true;
+
+      for (let field in correctAnswers) {
+        const input = document.getElementById(field);
+        if (input.value.trim() === correctAnswers[field]) {
+          input.classList.remove('incorrect');
+          if (!input.classList.contains('correct')) {
+            input.classList.add('correct');
+          }
+        } else {
+          input.classList.remove('correct');
+          input.classList.add('incorrect');
+          allCorrect = false;
+        }
+      }
+
+      // Check if all fields were correct on the first try
+      if (allCorrect) {
+        const allFresh = [...document.querySelectorAll('input')].every(input =>
+          input.classList.contains('correct') && !input.classList.contains('incorrect')
+        );
+        if (allFresh) {
+          document.getElementById("victory-sound").play();
+        }
+      }
+    }
+
+    generateQuestion();
+  </script>
+</body>
+</html>
